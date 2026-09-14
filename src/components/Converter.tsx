@@ -5,6 +5,7 @@ import { convertText } from '../converter';
 import { parseFile, formatFileSize, getFileAcceptString } from '../services/fileParser';
 import { exportFile, generateFileName } from '../services/fileExporter';
 import { useStatistics } from '../hooks/useStatistics';
+import { performanceMonitor } from '../utils/performance';
 import type { ConversionResult } from '../converter';
 import type { ExportFormat } from '../services/fileExporter';
 
@@ -67,7 +68,11 @@ export function Converter() {
     }
 
     convertTimeoutRef.current = setTimeout(() => {
-      const conversionResult = convertText(inputText);
+      const conversionResult = performanceMonitor.measureConversion(
+        () => convertText(inputText),
+        inputText.length,
+        0 // Output length keyin yangilanadi
+      );
       setResult(conversionResult);
     }, 150);
 
