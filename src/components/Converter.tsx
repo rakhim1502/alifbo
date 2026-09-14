@@ -1,7 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Copy, Download, Trash2, Upload, Check, FileText, ArrowRight } from 'lucide-react';
+import { Copy, Download, Trash2, Upload, Check, FileText, Loader2, AlertCircle } from 'lucide-react';
 import { convertText } from '../converter';
+import { parseFile, formatFileSize, getFileAcceptString } from '../services/fileParser';
+import { exportFile, generateFileName } from '../services/fileExporter';
 import type { ConversionResult } from '../converter';
+import type { ExportFormat } from '../services/fileExporter';
 
 export function Converter() {
   const [inputText, setInputText] = useState('');
@@ -9,8 +12,21 @@ export function Converter() {
   const [copied, setCopied] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [realtimeMode, setRealtimeMode] = useState(true);
+  const [isParsing, setIsParsing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  
   const dropRef = useRef<HTMLDivElement>(null);
   const convertTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Notification auto-hide
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // Real-time conversion (debounced)
   useEffect(() => {
@@ -50,6 +66,7 @@ export function Converter() {
     try {
       await navigator.clipboard.writeText(result.convertedText);
       setCopied(true);
+      setNotification({ type: 'success', message: 'Matn nusxalandi!' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       const textarea = document.createElement('textarea');
@@ -59,30 +76,78 @@ export function Converter() {
       document.execCommand('copy');
       document.body.removeChild(textarea);
       setCopied(true);
+      setNotification({ type: 'success', message: 'Matn nusxalandi!' });
       setTimeout(() => setCopied(false), 2000);
     }
   }, [result]);
 
-  // Natijani yuklab olish (TXT)
-  const handleDownload = useCallback(() => {
+  // Natijani yuklab olish
+  const handleDownload = useCallback(async (format: ExportFormat = 'txt') => {
     if (!result?.convertedText) return;
     
-    const blob = new Blob([result.convertedText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'converted-text.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [result]);
+    setIsExporting(true);
+    try {
+      const fileName = generateFileName(uploadedFileName || undefined, format);
+      const exportResult = await exportFile(result.convertedText, format, fileName);
+      
+      if (exportResult.success) {
+        setNotification({ type: 'success', message: `${format.toUpperCase()} fayl yuklab olindi!` });
+      } else {
+        setNotification({ type: 'error', message: exportResult.errors?.join(', ') || 'Export xatosi' });
+      }
+    } catch (error) {
+      setNotification({ type: 'error', message: 'Yuklab olishda xatolik yuz berdi' });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [result, uploadedFileName]);
 
   // Tozalash
   const handleClear = useCallback(() => {
     setInputText('');
     setResult(null);
+    setUploadedFileName(null);
   }, []);
+
+  // Fayl yuklash (universal — TXT, DOCX, PDF)
+  const handleFileUpload = useCallback(async (file: File) => {
+    setIsParsing(true);
+    setNotification(null);
+    
+    try {
+      const parseResult = await parseFile(file);
+      
+      if (parseResult.success) {
+        setInputText(parseResult.text);
+        setUploadedFileName(file.name);
+        setNotification({
+          type: 'success',
+          message: `${parseResult.fileType.toUpperCase()} fayl o'qildi (${formatFileSize(file.size)})`,
+        });
+      } else {
+        setNotification({
+          type: 'error',
+          message: parseResult.errors?.join(', ') || 'Faylni o\'qishda xatolik',
+        });
+      }
+    } catch (error) {
+      setNotification({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Faylni o\'qishda xatolik',
+      });
+    } finally {
+      setIsParsing(false);
+    }
+  }, []);
+
+  // File input change handler
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+    e.target.value = '';
+  }, [handleFileUpload]);
 
   // Example text
   const handleExample = useCallback(() => {
@@ -95,34 +160,7 @@ G'arbiy va sharqiy madaniyatlar kesishgan joyda joylashgan O'zbekiston buyuk ipa
 Batafsil: https://uz.wikipedia.org/wiki/O'zbekiston
 Email: info@example.uz`;
     setInputText(exampleText);
-  }, []);
-
-  // Fayl yuklash
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validExtensions = ['.txt', '.text', '.md'];
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
-    if (!file.type.startsWith('text/') && !validExtensions.includes(fileExtension)) {
-      alert('Faqat TXT fayllar qo\'llab-quvvatlanadi. DOCX va PDF keyingi versiyada qo\'shiladi.');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Fayl hajmi 5MB dan oshmasligi kerak.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      setInputText(content);
-    };
-    reader.readAsText(file, 'UTF-8');
-    
-    e.target.value = '';
+    setUploadedFileName(null);
   }, []);
 
   // Drag & Drop
@@ -130,28 +168,10 @@ Email: info@example.uz`;
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (!file) return;
-
-    const validExtensions = ['.txt', '.text', '.md'];
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
-    if (!file.type.startsWith('text/') && !validExtensions.includes(fileExtension)) {
-      alert('Faqat TXT fayllar qo\'llab-quvvatlanadi.');
-      return;
+    if (file) {
+      handleFileUpload(file);
     }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Fayl hajmi 5MB dan oshmasligi kerak.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      setInputText(content);
-    };
-    reader.readAsText(file, 'UTF-8');
-  }, []);
+  }, [handleFileUpload]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -168,6 +188,28 @@ Email: info@example.uz`;
   return (
     <section id="converter" className="py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
+        {/* Notification */}
+        {notification && (
+          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 transition-all ${
+            notification.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+          }`}>
+            {notification.type === 'success' ? (
+              <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+            )}
+            <p className={`text-sm ${
+              notification.type === 'success'
+                ? 'text-green-700 dark:text-green-300'
+                : 'text-red-700 dark:text-red-300'
+            }`}>
+              {notification.message}
+            </p>
+          </div>
+        )}
+
         {/* Mode toggle */}
         <div className="flex items-center justify-center mb-8">
           <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -216,20 +258,40 @@ Email: info@example.uz`;
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Matnni shu yerga kiriting yoki faylni tashlang..."
+                placeholder="Matnni shu yerga kiriting yoki faylni tashlang (TXT, DOCX, PDF)..."
                 className="w-full h-72 p-4 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-mono text-sm leading-relaxed"
                 spellCheck={false}
               />
               
+              {/* Loading overlay */}
+              {isParsing && (
+                <div className="absolute inset-0 bg-white/80 dark:bg-slate-800/80 rounded-xl flex items-center justify-center z-10">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Fayl o'qilmoqda...</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Drag overlay */}
               {isDragging && (
                 <div className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-xl flex items-center justify-center bg-blue-50/80 dark:bg-blue-900/30 z-10">
                   <div className="text-center">
                     <Upload className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                     <p className="text-blue-600 dark:text-blue-400 font-medium">Faylni shu yerga tashlang</p>
+                    <p className="text-xs text-blue-500 mt-1">TXT, DOCX, PDF</p>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Uploaded file info */}
+            {uploadedFileName && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <FileText className="w-3 h-3" />
+                <span>Yuklangan: {uploadedFileName}</span>
+              </div>
+            )}
 
             {/* Input Actions */}
             <div className="flex flex-wrap gap-2">
@@ -238,8 +300,8 @@ Email: info@example.uz`;
                 <span>Yuklash</span>
                 <input
                   type="file"
-                  accept=".txt,.text,.md"
-                  onChange={handleFileUpload}
+                  accept={getFileAcceptString()}
+                  onChange={handleFileInputChange}
                   className="hidden"
                 />
               </label>
@@ -270,11 +332,6 @@ Email: info@example.uz`;
                 <span>Tozalash</span>
               </button>
             </div>
-          </div>
-
-          {/* Arrow (desktop) */}
-          <div className="hidden lg:flex items-center justify-center absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none" style={{ display: 'none' }}>
-            <ArrowRight className="w-6 h-6 text-gray-400" />
           </div>
 
           {/* Output Section */}
@@ -315,13 +372,29 @@ Email: info@example.uz`;
                   </>
                 )}
               </button>
+              
+              {/* Download dropdown */}
+              <div className="relative group">
+                <button
+                  onClick={() => handleDownload('txt')}
+                  disabled={!result?.convertedText || isExporting}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>TXT</span>
+                </button>
+              </div>
               <button
-                onClick={handleDownload}
-                disabled={!result?.convertedText}
+                onClick={() => handleDownload('docx')}
+                disabled={!result?.convertedText || isExporting}
                 className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Download className="w-4 h-4" />
-                <span>Yuklab olish</span>
+                <span>DOCX</span>
               </button>
             </div>
           </div>

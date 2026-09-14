@@ -34,10 +34,11 @@ export function Footer() {
               Qo'llab-quvvatlash
             </h3>
             <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <li>TXT fayl yuklash</li>
+              <li>TXT, DOCX, PDF fayl yuklash</li>
               <li>Natijani nusxalash</li>
-              <li>TXT formatida yuklab olish</li>
+              <li>TXT va DOCX formatida yuklab olish</li>
               <li>Dark/Light rejim</li>
+              <li>Real-time konvertatsiya</li>
             </ul>
           </div>
         </div>
