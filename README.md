@@ -21,12 +21,6 @@ Eski o'zbek lotin yozuvidagi matnlarni yangi o'zbek lotin alifbosiga avtomatik k
 - ✅ **URL/Email protection** - Konvertatsiya qilinmaydi
 - ✅ **Number preservation** - Raqamlar saqlanadi
 
-### Admin Panel
-- ✅ **Dictionary Manager** - Exception so'zlarni boshqarish
-- ✅ **Rules Manager** - Conversion qoidalarini tahrirlash
-- ✅ **User Preferences** - Sozlamalar interfeysi
-- ✅ **Export/Import** - JSON formatida ma'lumot almashish
-
 ### Statistics
 - ✅ **Conversion history** - So'nggi 100 ta konvertatsiya
 - ✅ **Performance metrics** - Tezlik va samaradorlik
@@ -79,11 +73,6 @@ npm run preview
 2. Qo'llab-quvvatlanadigan formatlar: TXT, DOCX, PDF
 3. Fayl hajmi limiti: 5MB
 
-### Admin panel
-- `Ctrl+Shift+A` - Admin panel'ni ochish
-- Dictionary - Exception so'zlarni boshqarish
-- Qoidalar - Conversion qoidalarini tahrirlash
-- Sozlamalar - User preferences
 
 ## 📊 Conversion Qoidalari
 
