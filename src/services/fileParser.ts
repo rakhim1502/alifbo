@@ -8,13 +8,21 @@
  * Qo'llab-quvvatlanadigan formatlar: TXT, DOCX, PDF
  */
 
-import mammoth from 'mammoth';
+// mammoth — dynamic import orqali
+async function getMammoth() {
+  return await import('mammoth');
+}
 
-// PDF.js worker konfiguratsiyasi
-import * as pdfjsLib from 'pdfjs-dist';
+// PDF.js worker konfiguratsiyasi — dynamic import orqali
+let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
-// PDF.js worker'ni CDN'dan yuklash (build muammolarini oldini olish)
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+async function getPdfLib() {
+  if (!pdfjsLib) {
+    pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  }
+  return pdfjsLib;
+}
 
 /**
  * Qo'llab-quvvatlanadigan fayl turlari
@@ -126,6 +134,7 @@ async function parseTxt(file: File): Promise<string> {
 async function parseDocx(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   
+  const mammoth = await getMammoth();
   const result = await mammoth.extractRawText({ arrayBuffer });
   return result.value;
 }
@@ -136,7 +145,8 @@ async function parseDocx(file: File): Promise<string> {
 async function parsePdf(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const lib = await getPdfLib();
+  const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
   const numPages = pdf.numPages;
   
   let fullText = '';

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Copy, Download, Trash2, Upload, Check, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { convertText } from '../converter';
 import { parseFile, formatFileSize, getFileAcceptString } from '../services/fileParser';
 import { exportFile, generateFileName } from '../services/fileExporter';
@@ -19,6 +20,7 @@ export function Converter() {
   
   const dropRef = useRef<HTMLDivElement>(null);
   const convertTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Notification auto-hide
   useEffect(() => {
@@ -50,6 +52,21 @@ export function Converter() {
         clearTimeout(convertTimeoutRef.current);
       }
     };
+  }, [inputText, realtimeMode]);
+
+  // Keyboard shortcut: Ctrl/Cmd + Enter to convert
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (inputText.trim() && !realtimeMode) {
+          handleConvert();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [inputText, realtimeMode]);
 
   // Manual conversion
@@ -107,6 +124,9 @@ export function Converter() {
     setInputText('');
     setResult(null);
     setUploadedFileName(null);
+    if (inputTextareaRef.current) {
+      inputTextareaRef.current.focus();
+    }
   }, []);
 
   // Fayl yuklash (universal — TXT, DOCX, PDF)
@@ -186,50 +206,64 @@ Email: info@example.uz`;
   }, []);
 
   return (
-    <section id="converter" className="py-12 px-4 sm:px-6 lg:px-8">
+    <section id="converter" className="py-12 px-4 sm:px-6 lg:px-8" aria-label="Matn konvertori">
       <div className="max-w-6xl mx-auto">
         {/* Notification */}
-        {notification && (
-          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 transition-all ${
-            notification.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-          }`}>
-            {notification.type === 'success' ? (
-              <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-            )}
-            <p className={`text-sm ${
-              notification.type === 'success'
-                ? 'text-green-700 dark:text-green-300'
-                : 'text-red-700 dark:text-red-300'
-            }`}>
-              {notification.message}
-            </p>
-          </div>
-        )}
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+                notification.type === 'success'
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+              }`}
+              role="alert"
+              aria-live="polite"
+            >
+              {notification.type === 'success' ? (
+                <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" aria-hidden="true" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" aria-hidden="true" />
+              )}
+              <p className={`text-sm ${
+                notification.type === 'success'
+                  ? 'text-green-700 dark:text-green-300'
+                  : 'text-red-700 dark:text-red-300'
+              }`}>
+                {notification.message}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Mode toggle */}
         <div className="flex items-center justify-center mb-8">
-          <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1" role="radiogroup" aria-label="Konvertatsiya rejimi">
             <button
               onClick={() => setRealtimeMode(true)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 realtimeMode
                   ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
+              role="radio"
+              aria-checked={realtimeMode}
             >
               Real-time
             </button>
             <button
               onClick={() => setRealtimeMode(false)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 !realtimeMode
                   ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
+              role="radio"
+              aria-checked={!realtimeMode}
             >
               Tugma orqali
             </button>
@@ -238,12 +272,17 @@ Email: info@example.uz`;
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Section */}
-          <div className="space-y-3">
+          <motion.div 
+            className="space-y-3"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 ESKI ALIFBO
               </h2>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">
                 {inputText.length} belgi · {inputText.trim() ? inputText.trim().split(/\s+/).length : 0} so'z
               </span>
             </div>
@@ -256,91 +295,125 @@ Email: info@example.uz`;
               className="relative"
             >
               <textarea
+                ref={inputTextareaRef}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Matnni shu yerga kiriting yoki faylni tashlang (TXT, DOCX, PDF)..."
                 className="w-full h-72 p-4 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-mono text-sm leading-relaxed"
                 spellCheck={false}
+                aria-label="Eski alifbodagi matn"
+                aria-describedby="input-help"
               />
               
               {/* Loading overlay */}
-              {isParsing && (
-                <div className="absolute inset-0 bg-white/80 dark:bg-slate-800/80 rounded-xl flex items-center justify-center z-10">
-                  <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Fayl o'qilmoqda...</p>
-                  </div>
-                </div>
-              )}
+              <AnimatePresence>
+                {isParsing && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-white/80 dark:bg-slate-800/80 rounded-xl flex items-center justify-center z-10"
+                  >
+                    <div className="text-center">
+                      <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" aria-hidden="true" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Fayl o'qilmoqda...</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
               {/* Drag overlay */}
-              {isDragging && (
-                <div className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-xl flex items-center justify-center bg-blue-50/80 dark:bg-blue-900/30 z-10">
-                  <div className="text-center">
-                    <Upload className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                    <p className="text-blue-600 dark:text-blue-400 font-medium">Faylni shu yerga tashlang</p>
-                    <p className="text-xs text-blue-500 mt-1">TXT, DOCX, PDF</p>
-                  </div>
-                </div>
-              )}
+              <AnimatePresence>
+                {isDragging && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-xl flex items-center justify-center bg-blue-50/80 dark:bg-blue-900/30 z-10"
+                  >
+                    <div className="text-center">
+                      <Upload className="w-8 h-8 text-blue-500 mx-auto mb-2" aria-hidden="true" />
+                      <p className="text-blue-600 dark:text-blue-400 font-medium">Faylni shu yerga tashlang</p>
+                      <p className="text-xs text-blue-500 mt-1">TXT, DOCX, PDF</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
+
+            <p id="input-help" className="sr-only">
+              Matnni kiriting yoki TXT, DOCX, PDF faylni yuklang. Maksimal hajm: 5MB.
+            </p>
 
             {/* Uploaded file info */}
             {uploadedFileName && (
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <FileText className="w-3 h-3" />
+              <motion.div 
+                className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <FileText className="w-3 h-3" aria-hidden="true" />
                 <span>Yuklangan: {uploadedFileName}</span>
-              </div>
+              </motion.div>
             )}
 
             {/* Input Actions */}
             <div className="flex flex-wrap gap-2">
-              <label className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
-                <Upload className="w-4 h-4" />
+              <label className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-gray-900">
+                <Upload className="w-4 h-4" aria-hidden="true" />
                 <span>Yuklash</span>
                 <input
                   type="file"
                   accept={getFileAcceptString()}
                   onChange={handleFileInputChange}
-                  className="hidden"
+                  className="sr-only"
+                  aria-label="Fayl yuklash"
                 />
               </label>
               <button
                 onClick={handleExample}
                 disabled={!!inputText}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                aria-label="Misol matn qo'shish"
               >
-                <FileText className="w-4 h-4" />
+                <FileText className="w-4 h-4" aria-hidden="true" />
                 <span>Misol</span>
               </button>
               {!realtimeMode && (
                 <button
                   onClick={handleConvert}
                   disabled={!inputText.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  aria-label="Konvertatsiya qilish (Ctrl+Enter)"
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-4 h-4" aria-hidden="true" />
                   <span>Konvertatsiya</span>
                 </button>
               )}
               <button
                 onClick={handleClear}
                 disabled={!inputText && !result}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-auto"
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-auto focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                aria-label="Matnni tozalash"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
                 <span>Tozalash</span>
               </button>
             </div>
-          </div>
+          </motion.div>
 
           {/* Output Section */}
-          <div className="space-y-3">
+          <motion.div 
+            className="space-y-3"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 YANGI ALIFBO
               </h2>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">
                 {result?.stats.characters ?? 0} belgi · {result?.stats.words ?? 0} so'z
               </span>
             </div>
@@ -351,6 +424,8 @@ Email: info@example.uz`;
               placeholder="Konvertatsiya qilingan matn shu yerda ko'rinadi..."
               className="w-full h-72 p-4 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:outline-none font-mono text-sm leading-relaxed"
               spellCheck={false}
+              aria-label="Yangi alifbodagi natija"
+              aria-readonly="true"
             />
 
             {/* Output Actions */}
@@ -358,67 +433,84 @@ Email: info@example.uz`;
               <button
                 onClick={handleCopy}
                 disabled={!result?.convertedText}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                aria-label={copied ? 'Nusxalandi' : 'Natijani nusxalash'}
               >
                 {copied ? (
                   <>
-                    <Check className="w-4 h-4 text-green-500" />
+                    <Check className="w-4 h-4 text-green-500" aria-hidden="true" />
                     <span>Nusxalandi!</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-4 h-4" />
+                    <Copy className="w-4 h-4" aria-hidden="true" />
                     <span>Nusxalash</span>
                   </>
                 )}
               </button>
               
-              {/* Download dropdown */}
-              <div className="relative group">
-                <button
-                  onClick={() => handleDownload('txt')}
-                  disabled={!result?.convertedText || isExporting}
-                  className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isExporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  <span>TXT</span>
-                </button>
-              </div>
+              <button
+                onClick={() => handleDownload('txt')}
+                disabled={!result?.convertedText || isExporting}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                aria-label="TXT formatida yuklab olish"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="w-4 h-4" aria-hidden="true" />
+                )}
+                <span>TXT</span>
+              </button>
+              
               <button
                 onClick={() => handleDownload('docx')}
                 disabled={!result?.convertedText || isExporting}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                aria-label="DOCX formatida yuklab olish"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-4 h-4" aria-hidden="true" />
                 <span>DOCX</span>
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Error display */}
-        {result?.errors && result.errors.length > 0 && (
-          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-            <p className="text-sm text-red-700 dark:text-red-400">
-              Xatolik: {result.errors.join(', ')}
-            </p>
-          </div>
-        )}
+        <AnimatePresence>
+          {result?.errors && result.errors.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl"
+              role="alert"
+            >
+              <p className="text-sm text-red-700 dark:text-red-400">
+                Xatolik: {result.errors.join(', ')}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Stats bar */}
-        {result && result.success && (
-          <div className="mt-6 flex items-center justify-center gap-6 text-xs text-gray-500 dark:text-gray-400">
-            <span>Boshlang'ich: {result.originalText.length} belgi</span>
-            <span>→</span>
-            <span>Natija: {result.convertedText.length} belgi</span>
-            <span>→</span>
-            <span>{result.stats.words} so'z</span>
-          </div>
-        )}
+        <AnimatePresence>
+          {result && result.success && (
+            <motion.div 
+              className="mt-6 flex items-center justify-center gap-6 text-xs text-gray-500 dark:text-gray-400"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              aria-live="polite"
+            >
+              <span>Boshlang'ich: {result.originalText.length} belgi</span>
+              <span aria-hidden="true">→</span>
+              <span>Natija: {result.convertedText.length} belgi</span>
+              <span aria-hidden="true">→</span>
+              <span>{result.stats.words} so'z</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );

@@ -9,11 +9,20 @@ function App() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-200">
+      <a 
+        href="#converter" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-20 focus:left-4 focus:z-50 focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:outline-none"
+      >
+        Konvertorga o'tish
+      </a>
+      
       <Header theme={theme} toggleTheme={toggleTheme} />
-      <main>
+      
+      <main id="main-content" role="main">
         <Hero />
         <Converter />
       </main>
+      
       <Footer />
     </div>
   );

@@ -7,9 +7,6 @@
  * Kelajakda: PDF export
  */
 
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
-import { saveAs } from 'file-saver';
-
 export type ExportFormat = 'txt' | 'docx';
 
 /**
@@ -28,7 +25,14 @@ export interface ExportResult {
 export function exportAsTxt(text: string, fileName: string = 'converted-text'): ExportResult {
   try {
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    saveAs(blob, `${fileName}.txt`);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fileName}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     
     return {
       success: true,
@@ -59,6 +63,12 @@ export async function exportAsDocx(
   } = {}
 ): Promise<ExportResult> {
   try {
+    // Dynamic import
+    const [{ Document, Packer, Paragraph, TextRun }, { saveAs }] = await Promise.all([
+      import('docx'),
+      import('file-saver'),
+    ]);
+    
     // Matnni paragraflarga ajratish
     const paragraphs = text.split('\n').filter(p => p.trim().length > 0);
     
