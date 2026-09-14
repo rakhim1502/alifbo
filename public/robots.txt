@@ -1,0 +1,15 @@
+# O'zbek Alifbo Konvertori - Robots.txt
+# https://uzbconverter.uz
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://uzbconverter.uz/sitemap.xml
+
+# Disallow admin panel
+Disallow: /admin
+Disallow: /api
+
+# Crawl-delay (ixtiyoriy)
+Crawl-delay: 1
