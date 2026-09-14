@@ -1,6 +1,7 @@
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Converter } from './components/Converter';
+import { StatisticsDashboard } from './components/StatisticsDashboard';
 import { Footer } from './components/Footer';
 import { useTheme } from './hooks/useTheme';
 
@@ -21,6 +22,7 @@ function App() {
       <main id="main-content" role="main">
         <Hero />
         <Converter />
+        <StatisticsDashboard />
       </main>
       
       <Footer />

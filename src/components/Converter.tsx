@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { convertText } from '../converter';
 import { parseFile, formatFileSize, getFileAcceptString } from '../services/fileParser';
 import { exportFile, generateFileName } from '../services/fileExporter';
+import { useStatistics } from '../hooks/useStatistics';
 import type { ConversionResult } from '../converter';
 import type { ExportFormat } from '../services/fileExporter';
 
@@ -21,6 +22,8 @@ export function Converter() {
   const dropRef = useRef<HTMLDivElement>(null);
   const convertTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const { addConversion } = useStatistics();
+  const lastSavedRef = useRef<string | null>(null);
 
   // Notification auto-hide
   useEffect(() => {
@@ -29,6 +32,27 @@ export function Converter() {
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
+  // Save conversion to history (debounced - faqat 2 soniya tinchganda)
+  useEffect(() => {
+    if (!result?.success || !result.convertedText) return;
+    
+    // Duplicate saqlashni oldini olish
+    const resultKey = `${result.originalText.length}-${result.convertedText.length}`;
+    if (lastSavedRef.current === resultKey) return;
+    
+    const timer = setTimeout(() => {
+      addConversion({
+        inputLength: result.originalText.length,
+        outputLength: result.convertedText.length,
+        wordCount: result.stats.words,
+        mode: 'old-to-new',
+      });
+      lastSavedRef.current = resultKey;
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [result, addConversion]);
 
   // Real-time conversion (debounced)
   useEffect(() => {

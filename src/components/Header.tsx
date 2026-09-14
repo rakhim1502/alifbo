@@ -35,6 +35,12 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
               Konvertor
             </a>
             <a 
+              href="#statistics" 
+              className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded"
+            >
+              Statistika
+            </a>
+            <a 
               href="#rules" 
               className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded"
             >
