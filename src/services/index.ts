@@ -22,3 +22,6 @@ export type { ExportResult, ExportFormat } from './fileExporter';
 
 export { storage } from './storage';
 export type { ConversionRecord, Statistics, UserPreferences } from './storage';
+
+export { dictionaryService } from './dictionaryService';
+export type { CustomDictionaryEntry } from './dictionaryService';
