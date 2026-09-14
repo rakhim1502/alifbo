@@ -84,6 +84,19 @@ export function Converter() {
     setResult(null);
   }, []);
 
+  // Example text
+  const handleExample = useCallback(() => {
+    const exampleText = `O'zbekiston — markaziy Osiyodagi davlat. Poytaxti Toshkent shahri. O'zbekiston Respublikasi 1991-yilda mustaqillik e'lon qilgan.
+
+O'zbek tili — turkiy tillar oilasiga mansub. O'zbek xalqi boy madaniyat va tarixga ega. Shahar va qishloqlarda chiroyli me'morchilik yodgorliklari saqlangan.
+
+G'arbiy va sharqiy madaniyatlar kesishgan joyda joylashgan O'zbekiston buyuk ipak yo'lining muhim markazi bo'lgan. Samarqand, Buxoro, Xiva kabi shaharlar dunyoga mashhur.
+
+Batafsil: https://uz.wikipedia.org/wiki/O'zbekiston
+Email: info@example.uz`;
+    setInputText(exampleText);
+  }, []);
+
   // Fayl yuklash
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -230,6 +243,14 @@ export function Converter() {
                   className="hidden"
                 />
               </label>
+              <button
+                onClick={handleExample}
+                disabled={!!inputText}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Misol</span>
+              </button>
               {!realtimeMode && (
                 <button
                   onClick={handleConvert}

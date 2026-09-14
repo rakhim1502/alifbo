@@ -52,7 +52,7 @@ export interface DictionaryEntry {
 }
 
 export type Token = {
-  type: 'word' | 'whitespace' | 'punctuation' | 'number' | 'url' | 'email' | 'placeholder' | 'unknown';
+  type: 'word' | 'whitespace' | 'punctuation' | 'number' | 'url' | 'email' | 'abbreviation' | 'placeholder' | 'unknown';
   value: string;
   index: number;
 };

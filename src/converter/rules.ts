@@ -100,7 +100,7 @@ export const EXCEPTION_WORDS: Map<string, string> = new Map([
  * URL va email pattern'lari — konvertatsiya qilinmaydi
  */
 export const PRESERVE_PATTERNS = {
-  url: /https?:\/\/[^\s<>\"')\]]+/g,
+  url: /https?:\/\/[^\s<>"')\]]+/g,
   email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
   // Raqamlar va punctuation saqlanadi
   number: /\b\d+([.,]\d+)*\b/g,
@@ -116,6 +116,19 @@ export const PUNCTUATION = new Set<string>([
   '%', '\u2116', '&', '#', '@',
   '/', '\\', '|', '<', '>',
   '+', '=', '*', '~', '^',
+]);
+
+/**
+ * Qisqartmalar — konvertatsiya qilinmaydi
+ */
+export const ABBREVIATIONS = new Set<string>([
+  'km', 'm', 'sm', 'mm', 'kg', 'g', 'mg',
+  'ml', 'l', 'dl',
+  'soat', 'min', 'sek',
+  'hoz', 'yr', 'yil',
+  'MS', 'PhD', 'BA', 'MA',
+  'USA', 'UK', 'EU', 'UN',
+  'AI', 'IT', 'API', 'URL',
 ]);
 
 /**
@@ -141,6 +154,13 @@ export function getException(word: string): string | null {
 }
 
 /**
+ * So'z qisqartma ekanligini tekshirish
+ */
+export function isAbbreviation(word: string): boolean {
+  return ABBREVIATIONS.has(word) || ABBREVIATIONS.has(word.toLowerCase());
+}
+
+/**
  * Barcha qoidalarni olish (exception + character mappings)
  */
 export function getAllRules() {
@@ -149,5 +169,6 @@ export function getAllRules() {
     exceptions: EXCEPTION_WORDS,
     preservePatterns: PRESERVE_PATTERNS,
     punctuation: PUNCTUATION,
+    abbreviations: ABBREVIATIONS,
   };
 }

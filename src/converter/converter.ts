@@ -5,7 +5,7 @@
 
 import { normalize } from './normalize';
 import { tokenize, tokensToText } from './tokenizer';
-import { getSortedRules, PUNCTUATION } from './rules';
+import { getSortedRules, isAbbreviation } from './rules';
 import { dictionary } from './dictionary';
 import { validateInput, validateOutput } from './validator';
 import { detectCase, applyCase, escapeRegex, calculateStats } from './utils';
@@ -19,6 +19,11 @@ import type { ConversionResult, ConversionOptions, Token } from './types';
  */
 function convertWord(word: string): string {
   if (word.length === 0) return word;
+  
+  // Qisqartma tekshirish — konvertatsiya qilinmaydi
+  if (isAbbreviation(word)) {
+    return word;
+  }
   
   // 1. Exception dictionary tekshirish
   const entry = dictionary.lookup(word);
@@ -47,7 +52,7 @@ function convertWord(word: string): string {
  * Token'ni konvertatsiya qiladi
  * 
  * Faqat word token'lari konvertatsiya qilinadi.
- * Boshqa token turlari (URL, email, number, punctuation) o'zgarishsiz qoladi.
+ * Boshqa token turlari (URL, email, number, punctuation, abbreviation) o'zgarishsiz qoladi.
  */
 function convertToken(token: Token): Token {
   if (token.type === 'word') {
@@ -56,6 +61,7 @@ function convertToken(token: Token): Token {
       value: convertWord(token.value),
     };
   }
+  // abbreviation, url, email, number, punctuation, whitespace — o'zgarishsiz
   return token;
 }
 
@@ -163,4 +169,41 @@ export function convertRealtime(
   options?: ConversionOptions
 ): ConversionResult {
   return convertText(inputText, options);
+}
+
+/**
+ * Performance test — katta matn bilan konvertatsiya
+ */
+export function performanceTest(textSize: number = 100000): {
+  inputSize: number;
+  outputSize: number;
+  duration: number;
+  wordsPerSecond: number;
+} {
+  // Test matni yaratish
+  const testWords = [
+    "O'zbekiston", "shahar", "chiroyli", "g'arbiy", "to'g'ri",
+    "o'qish", "o'rganmoq", "g'alaba", "shirin", "chiroq",
+    "https://example.com", "test@mail.com", "123", "2026",
+  ];
+  
+  let testText = '';
+  while (testText.length < textSize) {
+    testText += testWords[Math.floor(Math.random() * testWords.length)] + ' ';
+  }
+  
+  // Performance o'lchash
+  const startTime = performance.now();
+  const result = convertText(testText);
+  const endTime = performance.now();
+  
+  const duration = endTime - startTime;
+  const wordsPerSecond = (result.stats.words / duration) * 1000;
+  
+  return {
+    inputSize: testText.length,
+    outputSize: result.convertedText.length,
+    duration,
+    wordsPerSecond,
+  };
 }
