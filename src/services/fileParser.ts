@@ -13,13 +13,16 @@ async function getMammoth() {
   return await import('mammoth');
 }
 
-// PDF.js worker konfiguratsiyasi — dynamic import orqali
+// PDF.js worker konfiguratsiyasi — Vite uchun
 let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
 async function getPdfLib() {
   if (!pdfjsLib) {
     pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    // Worker'ni o'chirish - main thread'da ishlash
+    // Bu sekinroq, lekin CDN va build muammolarini oldini oladi
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    pdfjsLib.GlobalWorkerOptions.workerPort = null;
   }
   return pdfjsLib;
 }
