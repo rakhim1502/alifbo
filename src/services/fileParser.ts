@@ -19,10 +19,10 @@ let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 async function getPdfLib() {
   if (!pdfjsLib) {
     pdfjsLib = await import('pdfjs-dist');
-    // Worker'ni o'chirish - main thread'da ishlash
-    // Bu sekinroq, lekin CDN va build muammolarini oldini oladi
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-    pdfjsLib.GlobalWorkerOptions.workerPort = null;
+    
+    // Worker'ni jsdelivr CDN'dan yuklash (ishonchli va tez)
+    const version = pdfjsLib.version;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
   }
   return pdfjsLib;
 }
