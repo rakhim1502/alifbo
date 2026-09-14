@@ -25,3 +25,6 @@ export type { ConversionRecord, Statistics, UserPreferences } from './storage';
 
 export { dictionaryService } from './dictionaryService';
 export type { CustomDictionaryEntry } from './dictionaryService';
+
+export { rulesService } from './rulesService';
+export type { CustomRule } from './rulesService';

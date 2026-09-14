@@ -31,6 +31,7 @@ export interface CharacterMapping {
   new: string;
   context?: 'start' | 'middle' | 'end' | 'any';
   caseMode?: 'lower' | 'upper' | 'title' | 'any';
+  active?: boolean;
 }
 
 export interface ConversionOptions {
