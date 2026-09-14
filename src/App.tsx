@@ -3,28 +3,11 @@ import { Hero } from './components/Hero';
 import { Converter } from './components/Converter';
 import { StatisticsDashboard } from './components/StatisticsDashboard';
 import { Footer } from './components/Footer';
-import { AdminPanel } from './components/AdminPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useTheme } from './hooks/useTheme';
-import { AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
 
 function App() {
   const { theme, toggleTheme } = useTheme();
-  const [showAdmin, setShowAdmin] = useState(false);
-
-  // Admin panel'ni ochish (Ctrl+Shift+A)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-        e.preventDefault();
-        setShowAdmin(true);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   return (
     <ErrorBoundary>
@@ -52,11 +35,6 @@ function App() {
         </main>
         
         <Footer />
-
-        {/* Admin Panel */}
-        <AnimatePresence>
-          {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
-        </AnimatePresence>
       </div>
     </ErrorBoundary>
   );
