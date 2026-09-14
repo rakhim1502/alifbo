@@ -30,6 +30,7 @@ export interface CharacterMapping {
   old: string;
   new: string;
   context?: 'start' | 'middle' | 'end' | 'any';
+  caseMode?: 'lower' | 'upper' | 'title' | 'any';
 }
 
 export interface ConversionOptions {
@@ -38,6 +39,7 @@ export interface ConversionOptions {
   preserveUrls?: boolean;
   preserveEmails?: boolean;
   preserveNumbers?: boolean;
+  preservePunctuation?: boolean;
 }
 
 export interface DictionaryEntry {
@@ -48,3 +50,11 @@ export interface DictionaryEntry {
   priority: number;
   active: boolean;
 }
+
+export type Token = {
+  type: 'word' | 'whitespace' | 'punctuation' | 'number' | 'url' | 'email' | 'placeholder' | 'unknown';
+  value: string;
+  index: number;
+};
+
+export type ConversionMode = 'old-to-new' | 'new-to-old';

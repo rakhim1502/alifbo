@@ -1,106 +1,77 @@
 /**
  * O'zbek Alifbo Konvertori — Asosiy Converter
- * Conversion pipeline: Input → Normalize → Tokenize → Convert → Validate → Output
+ * Conversion pipeline: Input → Validate → Normalize → Tokenize → Convert → Validate → Output
  */
 
 import { normalize } from './normalize';
-import { getSortedRules, PRESERVE_PATTERNS, EXCEPTION_WORDS } from './rules';
-import type { ConversionResult, ConversionOptions, ConversionStats } from './types';
-
-/**
- * Matnni statistikalarini hisoblaydi
- */
-function calculateStats(text: string): ConversionStats {
-  const characters = text.length;
-  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-  const lines = text.split('\n').length;
-  
-  return { characters, words, lines };
-}
-
-/**
- * URL va email'larni placeholder bilan almashtiradi
- * Konvertatsiya paytida ular buzilmasligi uchun
- */
-function protectPatterns(text: string): { protectedText: string; placeholders: Map<string, string> } {
-  const placeholders = new Map<string, string>();
-  let counter = 0;
-  let protectedText = text;
-
-  // URL'larni himoyalash
-  protectedText = protectedText.replace(PRESERVE_PATTERNS.url, (match) => {
-    const key = `__URL_PLACEHOLDER_${counter}__`;
-    placeholders.set(key, match);
-    counter++;
-    return key;
-  });
-
-  // Email'larni himoyalash
-  protectedText = protectedText.replace(PRESERVE_PATTERNS.email, (match) => {
-    const key = `__EMAIL_PLACEHOLDER_${counter}__`;
-    placeholders.set(key, match);
-    counter++;
-    return key;
-  });
-
-  return { protectedText, placeholders };
-}
-
-/**
- * Placeholder'larni asl matn bilan qaytaradi
- */
-function restorePatterns(text: string, placeholders: Map<string, string>): string {
-  let result = text;
-  for (const [key, value] of placeholders) {
-    result = result.replace(key, value);
-  }
-  return result;
-}
+import { tokenize, tokensToText } from './tokenizer';
+import { getSortedRules, PUNCTUATION } from './rules';
+import { dictionary } from './dictionary';
+import { validateInput, validateOutput } from './validator';
+import { detectCase, applyCase, escapeRegex, calculateStats } from './utils';
+import type { ConversionResult, ConversionOptions, Token } from './types';
 
 /**
  * Bitta so'zni konvertatsiya qiladi
+ * 
+ * Avval exception dictionary tekshiriladi,
+ * keyin character mapping qoidalari qo'llaniladi.
  */
 function convertWord(word: string): string {
-  // Exception dictionary tekshirish
-  const lowerWord = word.toLowerCase();
-  if (EXCEPTION_WORDS.has(lowerWord)) {
-    const exceptionResult = EXCEPTION_WORDS.get(lowerWord)!;
+  if (word.length === 0) return word;
+  
+  // 1. Exception dictionary tekshirish
+  const entry = dictionary.lookup(word);
+  if (entry) {
     // Case preservation
-    if (word === word.toUpperCase()) {
-      return exceptionResult.toUpperCase();
-    }
-    if (word[0] === word[0].toUpperCase()) {
-      return exceptionResult[0].toUpperCase() + exceptionResult.slice(1);
-    }
-    return exceptionResult;
+    const caseType = detectCase(word);
+    return applyCase(entry.newForm, caseType, word);
   }
-
-  // Qoidalar bo'yicha konvertatsiya
+  
+  // 2. Character mapping qoidalarini qo'llash
   const rules = getSortedRules();
   let result = word;
-
+  
   for (const rule of rules) {
     // Ko'p harfli kombinatsiyalarni almashtirish
     if (rule.old.length > 1) {
-      // Case-sensitive almashtirish
       const regex = new RegExp(escapeRegex(rule.old), 'g');
       result = result.replace(regex, rule.new);
     }
   }
-
+  
   return result;
 }
 
 /**
- * Regex uchun maxsus belgilarni escape qiladi
+ * Token'ni konvertatsiya qiladi
+ * 
+ * Faqat word token'lari konvertatsiya qilinadi.
+ * Boshqa token turlari (URL, email, number, punctuation) o'zgarishsiz qoladi.
  */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function convertToken(token: Token): Token {
+  if (token.type === 'word') {
+    return {
+      ...token,
+      value: convertWord(token.value),
+    };
+  }
+  return token;
 }
 
 /**
  * Asosiy konvertatsiya funksiyasi
  * Eski alifbodan yangi alifboga matnni o'giradi
+ * 
+ * Pipeline:
+ * 1. Input validation
+ * 2. Unicode normalization
+ * 3. Apostrophe normalization
+ * 4. Whitespace normalization
+ * 5. Tokenization (URL/email protection)
+ * 6. Word-level conversion (dictionary + rules)
+ * 7. Output validation
+ * 8. Return result
  */
 export function convertText(
   inputText: string,
@@ -112,11 +83,24 @@ export function convertText(
     preserveUrls: true,
     preserveEmails: true,
     preserveNumbers: true,
+    preservePunctuation: true,
     ...options,
   };
 
-  // Input validation
-  if (!inputText || typeof inputText !== 'string') {
+  // 1. Input validation
+  const inputValidation = validateInput(inputText);
+  if (!inputValidation.valid) {
+    return {
+      success: false,
+      originalText: typeof inputText === 'string' ? inputText : '',
+      convertedText: '',
+      stats: { characters: 0, words: 0, lines: 0 },
+      errors: inputValidation.errors,
+    };
+  }
+
+  // Empty input
+  if (!inputText || inputText.trim().length === 0) {
     return {
       success: true,
       originalText: inputText || '',
@@ -126,43 +110,33 @@ export function convertText(
   }
 
   try {
-    // 1. Normalize
+    // 2-4. Normalize
     let text = normalize(inputText, {
       normalizeApostrophes: defaultOptions.normalizeApostrophes,
     });
 
-    // 2. URL va email'larni himoyalash
-    let placeholders = new Map<string, string>();
-    if (defaultOptions.preserveUrls || defaultOptions.preserveEmails) {
-      const protected_ = protectPatterns(text);
-      text = protected_.protectedText;
-      placeholders = protected_.placeholders;
+    // 5. Tokenize (URL/email protection ichida)
+    const tokens = tokenize(text);
+
+    // 6. Convert tokens
+    const convertedTokens = tokens.map(convertToken);
+
+    // 7. Reconstruct text
+    let result = tokensToText(convertedTokens);
+
+    // 8. Output validation
+    const outputValidation = validateOutput(result);
+    if (!outputValidation.valid) {
+      return {
+        success: false,
+        originalText: inputText,
+        convertedText: '',
+        stats: { characters: 0, words: 0, lines: 0 },
+        errors: outputValidation.errors,
+      };
     }
 
-    // 3. Tokenization va conversion
-    // So'zlar va bo'sh joylarni alohida ajratish
-    const tokens = text.split(/(\s+)/);
-    const convertedTokens = tokens.map(token => {
-      // Bo'sh joylarni o'zgartirmaslik
-      if (/^\s+$/.test(token)) {
-        return token;
-      }
-      // Placeholder'larni o'zgartirmaslik
-      if (token.startsWith('__') && token.endsWith('__')) {
-        return token;
-      }
-      // So'zni konvertatsiya qilish
-      return convertWord(token);
-    });
-
-    let result = convertedTokens.join('');
-
-    // 4. Placeholder'larni qaytarish
-    if (placeholders.size > 0) {
-      result = restorePatterns(result, placeholders);
-    }
-
-    // 5. Natija
+    // 9. Return result
     return {
       success: true,
       originalText: inputText,
@@ -175,7 +149,18 @@ export function convertText(
       originalText: inputText,
       convertedText: '',
       stats: { characters: 0, words: 0, lines: 0 },
-      errors: [error instanceof Error ? error.message : 'Nomaʼlum xatolik'],
+      errors: [error instanceof Error ? error.message : 'Nomaʼlum xatolik yuz berdi'],
     };
   }
+}
+
+/**
+ * Real-time conversion (debounced)
+ * Foydalanuvchi yozayotganda har bir o'zgarishda ishlatiladi
+ */
+export function convertRealtime(
+  inputText: string,
+  options?: ConversionOptions
+): ConversionResult {
+  return convertText(inputText, options);
 }
