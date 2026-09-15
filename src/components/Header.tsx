@@ -12,14 +12,18 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <motion.div 
+          <motion.div
             className="flex items-center gap-2"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">O'</span>
+            <div className="w-12 h-12 flex items-center justify-center overflow-hidden rounded-full">
+              <img
+                src="/logo_alifbo.jpg"
+                alt="Alifbo Konvertori Logo"
+                className="w-full h-full object-cover scale-135"
+              />
             </div>
             <span className="font-semibold text-gray-900 dark:text-white text-lg hidden sm:block">
               Alifbo Konvertori
@@ -28,26 +32,26 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-6" role="navigation" aria-label="Asosiy navigatsiya">
-            <a 
-              href="#converter" 
+            <a
+              href="#converter"
               className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded"
             >
               Konvertor
             </a>
-            <a 
-              href="#statistics" 
+            <a
+              href="#statistics"
               className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded"
             >
               Statistika
             </a>
-            <a 
-              href="#rules" 
+            <a
+              href="#rules"
               className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded"
             >
               Qoidalar
             </a>
-            <a 
-              href="#about" 
+            <a
+              href="#about"
               className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded"
             >
               Loyiha haqida
