@@ -1,12 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Copy, Download, Trash2, Upload, Check, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { Copy, Download, Trash2, Upload, Check, FileText, Loader2, AlertCircle, ArrowRightLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { convertText } from '../converter';
+import { convertText, convertTextReverse } from '../converter';
 import { parseFile, formatFileSize, getFileAcceptString } from '../services/fileParser';
 import { exportFile, generateFileName } from '../services/fileExporter';
 import { useStatistics } from '../hooks/useStatistics';
 import { performanceMonitor } from '../utils/performance';
-import type { ConversionResult } from '../converter';
+import type { ConversionResult, ConversionMode } from '../converter';
 import type { ExportFormat } from '../services/fileExporter';
 
 export function Converter() {
@@ -19,6 +19,7 @@ export function Converter() {
   const [isExporting, setIsExporting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [conversionMode, setConversionMode] = useState<ConversionMode>('old-to-new');
   
   const dropRef = useRef<HTMLDivElement>(null);
   const convertTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,13 +48,22 @@ export function Converter() {
         inputLength: result.originalText.length,
         outputLength: result.convertedText.length,
         wordCount: result.stats.words,
-        mode: 'old-to-new',
+        mode: conversionMode,
       });
       lastSavedRef.current = resultKey;
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [result, addConversion]);
+  }, [result, addConversion, conversionMode]);
+
+  // Conversion funksiyasi - mode'ga qarab
+  const performConversion = useCallback((text: string) => {
+    if (conversionMode === 'old-to-new') {
+      return convertText(text);
+    } else {
+      return convertTextReverse(text);
+    }
+  }, [conversionMode]);
 
   // Real-time conversion (debounced)
   useEffect(() => {
@@ -69,7 +79,7 @@ export function Converter() {
 
     convertTimeoutRef.current = setTimeout(() => {
       const conversionResult = performanceMonitor.measureConversion(
-        () => convertText(inputText),
+        () => performConversion(inputText),
         inputText.length,
         0 // Output length keyin yangilanadi
       );
@@ -101,9 +111,17 @@ export function Converter() {
   // Manual conversion
   const handleConvert = useCallback(() => {
     if (!inputText.trim()) return;
-    const conversionResult = convertText(inputText);
+    const conversionResult = performConversion(inputText);
     setResult(conversionResult);
-  }, [inputText]);
+  }, [inputText, performConversion]);
+
+  // Mode almashtirish
+  const handleModeChange = useCallback(() => {
+    setConversionMode(prev => prev === 'old-to-new' ? 'new-to-old' : 'old-to-new');
+    // Natijani tozalash
+    setResult(null);
+    lastSavedRef.current = null;
+  }, []);
 
   // Natijani nusxalash
   const handleCopy = useCallback(async () => {
@@ -200,17 +218,26 @@ export function Converter() {
 
   // Example text
   const handleExample = useCallback(() => {
-    const exampleText = `O'zbekiston — markaziy Osiyodagi davlat. Poytaxti Toshkent shahri. O'zbekiston Respublikasi 1991-yilda mustaqillik e'lon qilgan.
+    const exampleText = conversionMode === 'old-to-new'
+      ? `O'zbekiston — markaziy Osiyodagi davlat. Poytaxti Toshkent shahri. O'zbekiston Respublikasi 1991-yilda mustaqillik e'lon qilgan.
 
 O'zbek tili — turkiy tillar oilasiga mansub. O'zbek xalqi boy madaniyat va tarixga ega. Shahar va qishloqlarda chiroyli me'morchilik yodgorliklari saqlangan.
 
 G'arbiy va sharqiy madaniyatlar kesishgan joyda joylashgan O'zbekiston buyuk ipak yo'lining muhim markazi bo'lgan. Samarqand, Buxoro, Xiva kabi shaharlar dunyoga mashhur.
 
 Batafsil: https://uz.wikipedia.org/wiki/O'zbekiston
+Email: info@example.uz`
+      : `Özbekiston — markaziy Osiyodagi davlat. Poytaxti Toshkent şaharı. Özbekiston Respublikası 1991-yilda mustaqillik e'lon kılgan.
+
+Özbek tili — turkiy tillar oilasına mansub. Özbek xalkı boy madaniyat va tarixga ega. Şahar va kışloklarda çirøyli me'morçilik yodgorlikları saklgan.
+
+Ğarbiy va şarkiy madaniyatlar keşişgan joyda joylaşgan Özbekiston buyuk ipak yo'lining muhim markazı bo'lgan. Samarƣand, Buxoro, Xiva kabı şaharlar dunyoga maşhur.
+
+Batafsil: https://uz.wikipedia.org/wiki/Özbekiston
 Email: info@example.uz`;
     setInputText(exampleText);
     setUploadedFileName(null);
-  }, []);
+  }, [conversionMode]);
 
   // Drag & Drop
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -269,6 +296,20 @@ Email: info@example.uz`;
           )}
         </AnimatePresence>
 
+        {/* Direction toggle */}
+        <div className="flex items-center justify-center mb-4">
+          <button
+            onClick={handleModeChange}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            aria-label="Konvertatsiya yo'nalishini o'zgartirish"
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+            <span>
+              {conversionMode === 'old-to-new' ? 'Eski → Yangi' : 'Yangi → Eski'}
+            </span>
+          </button>
+        </div>
+
         {/* Mode toggle */}
         <div className="flex items-center justify-center mb-8">
           <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1" role="radiogroup" aria-label="Konvertatsiya rejimi">
@@ -309,7 +350,7 @@ Email: info@example.uz`;
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                ESKI ALIFBO
+                {conversionMode === 'old-to-new' ? 'ESKI ALIFBO' : 'YANGI ALIFBO'}
               </h2>
               <span className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">
                 {inputText.length} belgi · {inputText.trim() ? inputText.trim().split(/\s+/).length : 0} so'z
@@ -327,10 +368,12 @@ Email: info@example.uz`;
                 ref={inputTextareaRef}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Matnni shu yerga kiriting yoki faylni tashlang (TXT, DOCX, PDF)..."
+                placeholder={conversionMode === 'old-to-new' 
+                  ? "Matnni shu yerga kiriting yoki faylni tashlang (TXT, DOCX, PDF)..."
+                  : "Yangi alifbodagi matnni shu yerga kiriting..."}
                 className="w-full h-72 p-4 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-mono text-sm leading-relaxed"
                 spellCheck={false}
-                aria-label="Eski alifbodagi matn"
+                aria-label={conversionMode === 'old-to-new' ? "Eski alifbodagi matn" : "Yangi alifbodagi matn"}
                 aria-describedby="input-help"
               />
               
@@ -440,7 +483,7 @@ Email: info@example.uz`;
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                YANGI ALIFBO
+                {conversionMode === 'old-to-new' ? 'YANGI ALIFBO' : 'ESKI ALIFBO'}
               </h2>
               <span className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">
                 {result?.stats.characters ?? 0} belgi · {result?.stats.words ?? 0} so'z
